@@ -1,0 +1,36 @@
+# Render Blueprint — one free Docker web service running email-mcp over
+# MCP Streamable HTTP.  Endpoint: https://<name>.onrender.com/mcp
+# Health / keep-alive (no auth, GET only): https://<name>.onrender.com/healthz
+services:
+  - type: web
+    name: email-mcp
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      # Bearer token clients must send: "Authorization: Bearer <token>".
+      # Render generates a random value; copy it from the dashboard afterwards.
+      - key: EMAIL_MCP_HTTP_TOKEN
+        generateValue: true
+      # Whole config.toml, base64-encoded (see make-config-b64.sh).
+      # Alternatively leave unset and add a Secret File named "config.toml".
+      - key: EMAIL_MCP_CONFIG_TOML_B64
+        sync: false
+      # Mailbox secrets referenced from config.toml as "env:<VAR>".
+      - key: QQ_MAIL_AUTH_CODE
+        sync: false
+      - key: NETEASE163_AUTH_CODE
+        sync: false
+      - key: NETEASE126_AUTH_CODE
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: WORK_MAIL_PASSWORD
+        sync: false
+      # Optional: override the Host allowlist (default: $RENDER_EXTERNAL_HOSTNAME).
+      # - key: EMAIL_MCP_HTTP_ALLOWED_HOSTS
+      #   value: mail.example.com

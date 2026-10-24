@@ -1,0 +1,159 @@
+# email-mcp config for Render (v0.6.0 schema).
+# NO real secrets in this file: every password is an "env:<VAR>" reference that
+# the app resolves from Render environment variables at startup.
+# Supply this file to Render ONE of these ways (see README-zh.md):
+#   a) env var EMAIL_MCP_CONFIG_TOML_B64 = base64 of this file   (recommended)
+#   b) env var EMAIL_MCP_CONFIG_TOML     = this file verbatim (multi-line)
+#   c) Render Secret File named config.toml  (-> /etc/secrets/config.toml)
+
+[settings]
+rate_limit = 10
+# SAFE DEFAULT: read-only. Hides ALL write tools (send, reply, forward, move,
+# delete, bulk delete, folder/label delete, drafts, scheduler). There is no
+# per-tool or "confirm before send" switch in v0.6.0 — it is all or nothing.
+read_only = true
+
+# Local SQLite mirror on Render's ephemeral disk: rebuilt after every restart,
+# so keep it small for a 512 MB instance.
+[settings.cache]
+enabled = true
+mailboxes = ["INBOX"]
+window_days = 30        # first sync only reaches back 30 days
+body_messages = 100     # bodies kept per mailbox
+max_size_mb = 150
+sync_interval = 600
+
+# IMAP IDLE watcher: one extra long-lived IMAP connection per account/folder.
+# Needed for ambient verification-code catching and webhook alerts.
+# Outbound IMAP traffic does NOT keep a free Render instance awake.
+[settings.watcher]
+enabled = true
+folders = ["INBOX"]
+idle_timeout = 1740
+
+# The on-demand tool get_verification_code works regardless. Clipboard /
+# desktop features are useless in a headless container — switch them off.
+[settings.verification]
+enabled = true
+auto_copy = false
+confirm_copy = false
+notify = false
+copy_links = true
+link_action = "copy"
+max_age_minutes = 10
+accounts = []
+sender_allowlist = []
+sender_denylist = []
+
+[settings.hooks]
+on_new_email = "notify"   # "triage" needs MCP sampling from a connected client; not useful headless
+auto_label = false        # never auto-modify mail
+auto_flag = false
+
+[settings.hooks.alerts]
+desktop = false
+sound = false
+urgency_threshold = "high"
+# Optional: POST a JSON summary of each new mail (account, sender, subject, uid…).
+# In "notify" mode every mail is priority "normal", so include it below.
+# Works out of the box with e.g. https://ntfy.sh/<random-topic> (push to phone).
+# Feishu/DingTalk/WeCom bots need their own JSON shape -> would need a relay.
+webhook_url = ""
+webhook_events = ["urgent", "high", "normal"]
+
+# ─────────────────────────── accounts ───────────────────────────
+# "name" is what the AI passes as `account`. username defaults to email.
+
+# QQ Mail — enable IMAP/SMTP in QQ邮箱 设置→账户, use the 授权码 (not QQ password)
+[[accounts]]
+name = "qq"
+email = "12345678@qq.com"
+full_name = "Noah Li"
+password = "env:QQ_MAIL_AUTH_CODE"
+[accounts.imap]
+host = "imap.qq.com"
+port = 993
+tls = true
+[accounts.smtp]
+host = "smtp.qq.com"
+port = 465
+tls = true
+
+# 163 Mail — enable IMAP/SMTP + 客户端授权码. imapflow sends the IMAP ID command
+# automatically (NetEase requires it, otherwise "Unsafe Login").
+[[accounts]]
+name = "163"
+email = "yourname@163.com"
+password = "env:NETEASE163_AUTH_CODE"
+[accounts.imap]
+host = "imap.163.com"
+port = 993
+tls = true
+[accounts.smtp]
+host = "smtp.163.com"
+port = 465
+tls = true
+
+# 126 Mail — same as 163
+[[accounts]]
+name = "126"
+email = "yourname@126.com"
+password = "env:NETEASE126_AUTH_CODE"
+[accounts.imap]
+host = "imap.126.com"
+port = 993
+tls = true
+[accounts.smtp]
+host = "smtp.126.com"
+port = 465
+tls = true
+
+# Gmail — needs 2-Step Verification + a 16-char App Password
+[[accounts]]
+name = "gmail"
+email = "yourname@gmail.com"
+password = "env:GMAIL_APP_PASSWORD"
+[accounts.imap]
+host = "imap.gmail.com"
+port = 993
+tls = true
+[accounts.smtp]
+host = "smtp.gmail.com"
+port = 465
+tls = true
+
+# Company mailbox — fill in your provider's hosts/ports.
+# STARTTLS on 587 instead of 465:  port = 587, tls = false, starttls = true
+[[accounts]]
+name = "work"
+email = "noah@company.example"
+# username = "noah"            # if login name differs from the address
+password = "env:WORK_MAIL_PASSWORD"
+[accounts.imap]
+host = "imap.company.example"
+port = 993
+tls = true
+[accounts.smtp]
+host = "smtp.company.example"
+port = 465
+tls = true
+
+# Outlook/Hotmail (later, optional) — Microsoft disabled basic auth, OAuth2 only.
+# Obtaining the refresh token needs an Azure app registration; not set up yet.
+# [[accounts]]
+# name = "outlook"
+# email = "yourname@outlook.com"
+# [accounts.oauth2]
+# provider = "microsoft"
+# client_id = "<azure-app-client-id>"
+# client_secret = "env:OUTLOOK_CLIENT_SECRET"
+# refresh_token = "env:OUTLOOK_REFRESH_TOKEN"
+# [accounts.imap]
+# host = "outlook.office365.com"
+# port = 993
+# tls = true
+# [accounts.smtp]
+# host = "smtp.office365.com"
+# port = 587
+# tls = false
+# starttls = true

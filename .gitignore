@@ -1,0 +1,4 @@
+# Never commit real configs or secrets
+config.toml
+*.local.toml
+.env*
